@@ -1,0 +1,21 @@
+build/
+target/
+**/target/
+*.tmp
+*.deb
+.DS_Store
+vendor/
+
+# Python
+__pycache__/
+*.pyc
+
+# Credentials and secrets
+*.csv
+*.key
+*.pem
+*.env*
+data/
+.prism/
+.agent/
+specs/.lexlean/
