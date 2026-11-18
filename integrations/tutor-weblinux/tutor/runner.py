@@ -42,6 +42,7 @@ class TestRunner:
         lang: str = "cpp",
         submission_dir: Optional[Path] = None,
         compile_timeout: int = 25,
+        remote: Optional[str] = None,
     ) -> Tuple[bool, str, float, Dict[str, Any]]:
         """
         Compiles and executes the locked test harness for a problem against a user's solution.
@@ -101,6 +102,7 @@ class TestRunner:
 
             # Determine build & test command
             nonce = f"TUTOR_{secrets.token_hex(8)}"
+            remote_proc = None
             if (sandbox_dir / "harness.cpp").exists():
                 # Inject tutor_check.hpp testcase decomposer so local runs have 100% parity with cloud judge
                 tutor_check_src = Path(__file__).parent / "include" / "tutor_check.hpp"
@@ -131,37 +133,52 @@ class TestRunner:
                 )
                 harness_file.write_text(h_code, encoding="utf-8")
 
-                bin_path = sandbox_dir / "harness_bin"
-                compile_cmd = [
-                    "g++",
-                    "-O3",
-                    "-std=c++20",
-                    "-Wall",
-                    "-Wextra",
-                    "-I.",
-                    str(sandbox_dir / "harness.cpp"),
-                    "-o",
-                    str(bin_path),
-                ]
-                try:
-                    c_proc = subprocess.run(
-                        compile_cmd, cwd=str(sandbox_dir), capture_output=True, text=True, timeout=compile_timeout
-                    )
-                except subprocess.TimeoutExpired:
-                    return (
-                        False,
-                        f"Compilation Error: Compiler timed out (> {compile_timeout}s) — possible infinite template instantiation or recursive macro bomb.",
-                        0.0,
-                        {"score": 0.0, "scoreboard": None},
-                    )
-                if c_proc.returncode != 0:
-                    return (
-                        False,
-                        f"Compilation Error:\n{c_proc.stderr}",
-                        0.0,
-                        {"score": 0.0, "scoreboard": None},
-                    )
-                cmd = [str(bin_path)]
+                if remote:
+                    from .remote import bundle_sources, run_remote
+                    try:
+                        remote_proc = run_remote(bundle_sources(h_code, sandbox_dir), remote, compile_timeout)
+                    except Exception as exc:
+                        return (False, f"Remote Error: {exc}", 0.0, {"score": 0.0, "scoreboard": None})
+                    if remote_proc.build_returncode != 0:
+                        return (
+                            False,
+                            f"Compilation Error:\n{remote_proc.build_stderr}",
+                            0.0,
+                            {"score": 0.0, "scoreboard": None},
+                        )
+                    cmd = ["<remote>"]
+                else:
+                    bin_path = sandbox_dir / "harness_bin"
+                    compile_cmd = [
+                        "g++",
+                        "-O3",
+                        "-std=c++20",
+                        "-Wall",
+                        "-Wextra",
+                        "-I.",
+                        str(sandbox_dir / "harness.cpp"),
+                        "-o",
+                        str(bin_path),
+                    ]
+                    try:
+                        c_proc = subprocess.run(
+                            compile_cmd, cwd=str(sandbox_dir), capture_output=True, text=True, timeout=compile_timeout
+                        )
+                    except subprocess.TimeoutExpired:
+                        return (
+                            False,
+                            f"Compilation Error: Compiler timed out (> {compile_timeout}s) — possible infinite template instantiation or recursive macro bomb.",
+                            0.0,
+                            {"score": 0.0, "scoreboard": None},
+                        )
+                    if c_proc.returncode != 0:
+                        return (
+                            False,
+                            f"Compilation Error:\n{c_proc.stderr}",
+                            0.0,
+                            {"score": 0.0, "scoreboard": None},
+                        )
+                    cmd = [str(bin_path)]
             elif (sandbox_dir / "Makefile").exists():
                 cmd = ["make", "test"]
             elif (sandbox_dir / "Cargo.toml").exists():
@@ -180,14 +197,18 @@ class TestRunner:
 
             try:
                 start_ns = time.perf_counter_ns()
-                proc = subprocess.run(
-                    cmd,
-                    cwd=str(sandbox_dir),
-                    capture_output=True,
-                    text=True,
-                    timeout=15,
-                )
-                elapsed_ns = time.perf_counter_ns() - start_ns
+                if remote_proc is not None:
+                    proc = remote_proc
+                    elapsed_ns = int(remote_proc.elapsed_ms * 1_000_000)
+                else:
+                    proc = subprocess.run(
+                        cmd,
+                        cwd=str(sandbox_dir),
+                        capture_output=True,
+                        text=True,
+                        timeout=15,
+                    )
+                    elapsed_ns = time.perf_counter_ns() - start_ns
                 runtime_ms = elapsed_ns / 1_000_000.0
                 log = proc.stdout + ("\n" + proc.stderr if proc.stderr else "")
 

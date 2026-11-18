@@ -127,6 +127,15 @@ try {
   if (process.env.DIAGNOSTICS) {
     console.log(await shell("printf 'int main(){return 0;}' > /tmp/tiny.cpp; timeout 45 g++ -v /tmp/tiny.cpp -o /tmp/tiny; result=$?; echo compiler_result=$result; test $result = 0", 70_000));
     console.log(await shell("timeout 20 nvim --headless solution.hpp '+lua print(vim.inspect(vim.v.errmsg))' +qa", 30_000));
+  } else if (process.env.REMOTE) {
+    console.log(await shell("tutor test 000a --remote bridge --compile-timeout 90", 150_000));
+    assert.match(await screen(), /ALL TESTS PASSED/);
+    await shell("printf '%s\\n' 'invalid C++' > solution.hpp && tutor test 000a --remote bridge --compile-timeout 90", 150_000, 1);
+    assert.match(await screen(), /Compilation Error:/);
+  } else if (process.env.PROFILE) {
+    const script = await readFile("/tmp/prof.sh");
+    await shell(`printf '%s' '${script.toString("base64")}' | base64 -d > /tmp/prof.sh`);
+    console.log(await shell("bash /tmp/prof.sh 2>&1 | grep -E '^PROF'", 900_000));
   } else if (process.env.COMPILER_ONLY) {
     console.log(await shell("g++ -H -O3 -std=c++20 -Wall -Wextra -I. harness.cpp -o harness-local", 180_000));
     console.log(await shell("./harness-local", 60_000));
@@ -141,6 +150,8 @@ try {
     await expect("name.empty()", 60_000);
     await vimCommand(":call append('$', '// Edited in Synvim')");
     await vimCommand(":wq");
+    await until(async () => (await evaluate(`import('./terminal.js').then(({ terminal }) => terminal.buffer.active.type)`)) === "normal", 30_000);
+    await sleep(500);
     await shell("grep -qx '// Edited in Synvim' solution.hpp");
     assert.match(await shell("tutor test 000a --compile-timeout 240", 270_000), /ALL TESTS PASSED/);
     await shell("tutor-save");

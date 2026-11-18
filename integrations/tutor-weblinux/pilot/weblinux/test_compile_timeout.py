@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from tutor.cli import main
+from tutor.remote import RemoteResult, bundle_sources
 from tutor.runner import TestRunner
 
 
@@ -56,6 +57,41 @@ class CompileTimeoutTests(unittest.TestCase):
             self.assertFalse(success)
             self.assertIn("Compiler timed out (> 7s)", log)
             self.assertEqual(compiler.call_args.kwargs["timeout"], 7)
+
+
+class RemoteTests(unittest.TestCase):
+    def test_bundle_inlines_only_allowed_includes(self):
+        with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
+            root = Path(tmp)
+            (root / "solution.hpp").write_text("#pragma once\nint answer();\n")
+            secret = Path(outside) / "secret.hpp"
+            secret.write_text("int leaked;\n")
+            bundle = bundle_sources(f'#include "solution.hpp"\n#include "solution.hpp"\n#include "{secret}"\n', root)
+        self.assertEqual(bundle.count("int answer();"), 1)
+        self.assertNotIn("#pragma once", bundle)
+        self.assertNotIn("int leaked", bundle)
+        self.assertIn(f'#include "{secret}"', bundle)
+
+    def test_remote_result_is_graded_like_a_local_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            problem_dir = root / "warmup"
+            (problem_dir / "cpp").mkdir(parents=True)
+            (problem_dir / "cpp" / "harness.cpp").write_text("#include <cassert>\nint main(){}\n")
+            workspace = root / "work"
+            workspace.mkdir()
+            (workspace / "solution.hpp").write_text("// stub\n")
+            with patch("tutor.runner.get_config", return_value={"workspace_dir": str(root)}):
+                runner = TestRunner()
+            problem = {"id": "warmup", "dir": str(problem_dir)}
+            build_failure = RemoteResult(-1, "", "", 1, "boom", 1.0)
+            with patch("tutor.remote.run_remote", return_value=build_failure) as remote, \
+                 patch("tutor.runner.subprocess.run") as local:
+                success, log, _, _ = runner.run_test(problem, submission_dir=workspace, remote="bridge")
+        self.assertFalse(success)
+        self.assertIn("Compilation Error:\nboom", log)
+        self.assertEqual(remote.call_args.args[1], "bridge")
+        local.assert_not_called()
 
 
 if __name__ == "__main__":

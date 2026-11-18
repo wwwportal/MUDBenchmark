@@ -202,7 +202,8 @@ def cmd_test(args):
     print(f"\n⚡ Running locked test harness for {BOLD}{problem.get('title', problem['id'])}{RESET} [{lang}]...")
     runner = TestRunner()
     success, log, runtime_ms, metrics = runner.run_test(
-        problem, lang=lang, submission_dir=sub_dir, compile_timeout=args.compile_timeout
+        problem, lang=lang, submission_dir=sub_dir, compile_timeout=args.compile_timeout,
+        remote=getattr(args, "remote", None),
     )
 
     print("\n" + "=" * 68)
@@ -771,6 +772,9 @@ def main(argv=None):
     p_test.add_argument("--submission-dir", default=None, help="Explicit directory containing solution to grade")
     p_test.add_argument("--compile-timeout", type=_positive_seconds, default=25,
                         help="Compilation timeout in seconds (default: 25; increase for emulated guests)")
+    p_test.add_argument("--remote", choices=("godbolt", "bridge"), default=None,
+                        help="Compile and run on Compiler Explorer instead of local g++ "
+                             "(bridge: via the hosting page, for the browser VM)")
     p_test.set_defaults(func=cmd_test)
 
     # submit
