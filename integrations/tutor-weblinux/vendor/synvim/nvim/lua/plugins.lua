@@ -1,0 +1,259 @@
+return {
+  {
+    "nvim-lua/plenary.nvim",
+    lazy = true,
+  },
+  {
+    "nvim-tree/nvim-web-devicons",
+    lazy = true,
+  },
+  {
+    "folke/todo-comments.nvim",
+    dependencies = { "nvim-lua/plenary.nvim" },
+    event = { "BufReadPost", "BufNewFile" },
+    config = function()
+      require("todo-comments").setup({
+        signs = true,
+        keywords = {
+          FIX = { icon = " ", color = "error", alt = { "FIXME", "BUG", "FIXIT", "ISSUE" } },
+          TODO = { icon = " ", color = "info" },
+          SPEC = { icon = " ", color = "hint", alt = { "CONTRACT", "TIER" } },
+          HACK = { icon = " ", color = "warning" },
+          WARN = { icon = " ", color = "warning", alt = { "WARNING", "XXX" } },
+          PERF = { icon = " ", alt = { "OPTIM", "PERFORMANCE", "OPTIMIZE" } },
+          NOTE = { icon = " ", color = "hint", alt = { "INFO" } },
+        },
+      })
+    end,
+  },
+
+  {
+    "nvim-lualine/lualine.nvim",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    event = "VeryLazy",
+    config = function()
+      -- Vivid, high-contrast color palette for clear legibility and distinct mode states
+      local colors = {
+        blue       = "#2563eb", -- Normal mode: vibrant sapphire blue
+        blue_dark  = "#1e40af",
+        green      = "#16a34a", -- Insert mode: vibrant emerald green
+        green_dark = "#15803d",
+        purple     = "#9333ea", -- Visual mode: vivid royal purple
+        purple_dark= "#7e22ce",
+        orange     = "#ea580c", -- Command mode: vivid amber/orange
+        orange_dark= "#c2410c",
+        red        = "#dc2626", -- Replace mode: vivid ruby red
+        red_dark   = "#b91c1c",
+        cyan       = "#0891b2", -- Terminal mode: vivid teal/cyan
+        cyan_dark  = "#0e7490",
+        white      = "#ffffff",
+        fg_bright  = "#f8fafc", -- Crisp high-contrast foreground
+        fg_muted   = "#94a3b8",
+        bg_bar     = "#0f172a", -- Deep polished slate navy (replaces unreadable pure black)
+        bg_section = "#1e293b", -- Rich slate for secondary blocks
+        bg_subtle  = "#334155",
+        diff_add   = "#4ade80",
+        diff_mod   = "#facc15",
+        diff_del   = "#f87171",
+      }
+
+      local vibrant_theme = {
+        normal = {
+          a = { fg = colors.white, bg = colors.blue, gui = "bold" },
+          b = { fg = colors.fg_bright, bg = colors.bg_section },
+          c = { fg = colors.fg_bright, bg = colors.bg_bar },
+          x = { fg = colors.fg_bright, bg = colors.bg_bar },
+          y = { fg = colors.fg_bright, bg = colors.bg_section },
+          z = { fg = colors.white, bg = colors.blue_dark, gui = "bold" },
+        },
+        insert = {
+          a = { fg = colors.white, bg = colors.green, gui = "bold" },
+          b = { fg = colors.fg_bright, bg = colors.bg_section },
+          c = { fg = colors.fg_bright, bg = colors.bg_bar },
+          x = { fg = colors.fg_bright, bg = colors.bg_bar },
+          y = { fg = colors.fg_bright, bg = colors.bg_section },
+          z = { fg = colors.white, bg = colors.green_dark, gui = "bold" },
+        },
+        visual = {
+          a = { fg = colors.white, bg = colors.purple, gui = "bold" },
+          b = { fg = colors.fg_bright, bg = colors.bg_section },
+          c = { fg = colors.fg_bright, bg = colors.bg_bar },
+          x = { fg = colors.fg_bright, bg = colors.bg_bar },
+          y = { fg = colors.fg_bright, bg = colors.bg_section },
+          z = { fg = colors.white, bg = colors.purple_dark, gui = "bold" },
+        },
+        command = {
+          a = { fg = colors.white, bg = colors.orange, gui = "bold" },
+          b = { fg = colors.fg_bright, bg = colors.bg_section },
+          c = { fg = colors.fg_bright, bg = colors.bg_bar },
+          x = { fg = colors.fg_bright, bg = colors.bg_bar },
+          y = { fg = colors.fg_bright, bg = colors.bg_section },
+          z = { fg = colors.white, bg = colors.orange_dark, gui = "bold" },
+        },
+        replace = {
+          a = { fg = colors.white, bg = colors.red, gui = "bold" },
+          b = { fg = colors.fg_bright, bg = colors.bg_section },
+          c = { fg = colors.fg_bright, bg = colors.bg_bar },
+          x = { fg = colors.fg_bright, bg = colors.bg_bar },
+          y = { fg = colors.fg_bright, bg = colors.bg_section },
+          z = { fg = colors.white, bg = colors.red_dark, gui = "bold" },
+        },
+        terminal = {
+          a = { fg = colors.white, bg = colors.cyan, gui = "bold" },
+          b = { fg = colors.fg_bright, bg = colors.bg_section },
+          c = { fg = colors.fg_bright, bg = colors.bg_bar },
+          x = { fg = colors.fg_bright, bg = colors.bg_bar },
+          y = { fg = colors.fg_bright, bg = colors.bg_section },
+          z = { fg = colors.white, bg = colors.cyan_dark, gui = "bold" },
+        },
+        inactive = {
+          a = { fg = colors.fg_muted, bg = colors.bg_section },
+          b = { fg = colors.fg_muted, bg = colors.bg_bar },
+          c = { fg = colors.fg_muted, bg = colors.bg_bar },
+          x = { fg = colors.fg_muted, bg = colors.bg_bar },
+          y = { fg = colors.fg_muted, bg = colors.bg_section },
+          z = { fg = colors.fg_muted, bg = colors.bg_subtle },
+        },
+      }
+
+      require("lualine").setup({
+        options = {
+          icons_enabled = true,
+          theme = vibrant_theme,
+          component_separators = { left = "", right = "" },
+          section_separators = { left = "", right = "" },
+          globalstatus = true,
+          disabled_filetypes = {
+            statusline = {},
+            winbar = {},
+          },
+        },
+        sections = {
+          lualine_a = {
+            {
+              "mode",
+              fmt = function(str)
+                return " " .. str .. " "
+              end,
+            },
+          },
+          lualine_b = {
+            {
+              "branch",
+              icon = "",
+              color = { fg = colors.white, gui = "bold" },
+            },
+
+            {
+              "diagnostics",
+              sources = { "nvim_diagnostic" },
+              symbols = { error = " ", warn = " ", info = " ", hint = " " },
+              colored = true,
+            },
+          },
+          lualine_c = {
+            {
+              function()
+                local buf = vim.api.nvim_get_current_buf()
+                local name = vim.api.nvim_buf_get_name(buf)
+                local bt = vim.bo[buf].buftype
+                local ft = vim.bo[buf].filetype
+
+                -- Clean formatting for terminal buffers (no ugly term://...//pid: or padlock)
+                if bt == "terminal" or name:match("^term://") then
+                  local ui_mod = package.loaded["synvim.ui"]
+                  local live_cwd = ui_mod and ui_mod.get_terminal_cwd and ui_mod.get_terminal_cwd(buf)
+                  local dir, shell = nil, nil
+                  if not live_cwd then
+                    dir, shell = name:match("^term://(.-)//%d+:(.*)$")
+                    if not dir then dir, shell = name:match("^term://(.-):(.*)$") end
+                  else
+                    dir = live_cwd
+                    shell = name:match("^term://.-//%d+:(.*)$") or "bash"
+                  end
+
+                  local home = os.getenv("HOME") or ""
+                  if dir and home ~= "" and vim.startswith(dir, home) then
+                    dir = "~" .. dir:sub(#home + 1)
+                  end
+                  local short_shell = shell and vim.fn.fnamemodify(shell, ":t") or "bash"
+                  if dir and dir ~= "" then
+                    return string.format("  Terminal: %s (%s)", dir, short_shell)
+                  else
+                    return string.format("  Terminal (%s)", short_shell)
+                  end
+                end
+
+                if bt == "quickfix" then
+                  return " Quickfix Agenda"
+                end
+
+                if bt == "help" then
+                  return " Help: " .. vim.fn.fnamemodify(name, ":t")
+                end
+
+                if ft == "markdown" and bt == "nofile" then
+                  return "📝 Input"
+                end
+
+                if name == "" then
+                  return "[No Name]"
+                end
+
+                -- Compute clean relative or shortened path
+                local rel = vim.fn.fnamemodify(name, ":.")
+                local home = os.getenv("HOME") or ""
+                if home ~= "" and vim.startswith(rel, home) then
+                  rel = "~" .. rel:sub(#home + 1)
+                end
+
+                local mod = vim.bo[buf].modified and " ●" or ""
+                local ro = (vim.bo[buf].readonly or not vim.bo[buf].modifiable) and " " or ""
+
+                return rel .. mod .. ro
+              end,
+              color = { fg = colors.white, gui = "bold" },
+            },
+          },
+          lualine_x = {
+            {
+              "encoding",
+              color = { fg = colors.fg_muted },
+            },
+            {
+              "fileformat",
+              color = { fg = colors.fg_muted },
+            },
+            {
+              "filetype",
+              colored = true,
+            },
+          },
+          lualine_y = {
+            {
+              "progress",
+              color = { fg = colors.fg_bright, gui = "bold" },
+            },
+          },
+          lualine_z = {
+            {
+              "location",
+              color = { fg = colors.white, gui = "bold" },
+            },
+          },
+        },
+        tabline = {},
+      })
+    end,
+  },
+
+  -- Core Modular Plugins (Syntra Labs Ecosystem)
+  {
+    "Syntra-Labs/scribe",
+    dir = vim.fn.isdirectory(vim.fn.expand("~/code/scribe")) == 1 and vim.fn.expand("~/code/scribe") or nil,
+    lazy = false,
+    config = function()
+      require("scribe").setup()
+    end,
+  },
+}

@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+if [ "$#" -ne 1 ]; then
+    echo "Usage: tutor-restore BASE64" >&2
+    exit 2
+fi
+tutor pick 000a-hello-world --no-edit
+cd "$HOME/tutor-workspace/000a-hello-world"
+temp=$(mktemp ./restore.XXXXXX)
+trap 'rm -f -- "$temp"' EXIT
+printf '%s' "$1" | base64 -d > "$temp"
+if [ "$(wc -c < "$temp")" -gt 2048 ]; then
+    echo "The pilot supports restoring a solution of at most 2048 bytes." >&2
+    exit 1
+fi
+mv -- "$temp" solution.hpp
+printf '%s\n' "Restored solution.hpp."

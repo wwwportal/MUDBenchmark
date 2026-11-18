@@ -1,0 +1,15 @@
+#!/bin/bash
+set -eu
+mount -t proc proc /proc
+mount -t sysfs sys /sys
+mount -t devtmpfs dev /dev
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts
+export HOME=/root TERM=xterm-256color EDITOR=nvim
+export PATH=/usr/local/bin:/usr/bin:/bin
+export PS1='tutor:\w\$ '
+cd "$HOME"
+stty -F /dev/ttyS0 rows 30 cols 100
+printf '\nQEMU-WASM-SMOKE-READY\n'
+printf 'Tutor: list with `tutor list`, then `tutor pick 000a-hello-world`.\n'
+exec setsid --ctty bash --noprofile --norc -i </dev/ttyS0 >/dev/ttyS0 2>&1

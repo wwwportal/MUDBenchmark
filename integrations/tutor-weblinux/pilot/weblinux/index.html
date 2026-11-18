@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tutor WebLinux pilot</title>
+  <link rel="stylesheet" href="xterm.css">
+</head>
+<body>
+  <h1>Tutor WebLinux pilot</h1>
+  <button id="boot">Start Linux</button>
+  <output id="status" role="status">Idle</output>
+  <p>Run <code>tutor-save</code> at the prompt to keep your saved solution across reloads.</p>
+  <button id="restore" disabled>Show restore command</button>
+  <button id="export" disabled>Export solution</button>
+  <label>Import solution <input id="import" type="file" accept=".hpp,text/plain"></label>
+  <output id="backup-status" role="status"></output>
+  <input id="restore-command" aria-label="Restore command" readonly hidden>
+  <div id="terminal" aria-label="Tutor terminal"></div>
+  <script src="xterm.js"></script>
+  <script type="module" src="terminal.js"></script>
+</body>
+</html>
