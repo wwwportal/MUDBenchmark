@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+source="$HOME/tutor-workspace/000a-hello-world/solution.hpp"
+size=$(wc -c < "$source")
+if [ "$size" -gt 2048 ]; then
+    echo "The pilot supports saving a solution of at most 2048 bytes." >&2
+    exit 1
+fi
+printf '\033]777;tutor-save:%s\007' "$(base64 -w0 -- "$source")"

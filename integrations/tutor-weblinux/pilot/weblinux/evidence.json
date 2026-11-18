@@ -1,0 +1,61 @@
+{
+  "decision": "Do not replace the existing Studio with this configuration.",
+  "delivery_status": "Incomplete local prototype; no hosted deployment.",
+  "environment": "Headless desktop Chromium on a shared Linux x86_64 host; not a controlled performance benchmark.",
+  "mvm_revision": "980f39164779ef92272bdac47f0fbac91a7898bc",
+  "reference_image_set": "image-set/v0.2.4",
+  "reference_verification": "Pinned manifest digest, Sigstore bundle signature, and smoke-pack SHA-256 verified.",
+  "synvim_revision": "0b4364e872f4ee5674478398e48b3b562eae7e60",
+  "observations": [
+    {
+      "check": "Unmodified reference guest with optional unsupported user-mode networking disabled",
+      "result": "Interactive shell and guest stdout worked on two boots.",
+      "seconds": [11.6, 11.1]
+    },
+    {
+      "check": "Tutor guest usable shell",
+      "result": "Worked.",
+      "approximate_seconds": 16
+    },
+    {
+      "check": "Tutor problem selection and specification",
+      "result": "Warmup scaffold and specification display worked.",
+      "observed_seconds": 14.366
+    },
+    {
+      "check": "Header-free C++ program",
+      "result": "Compiled successfully in the browser guest.",
+      "observed_seconds": 10.69
+    },
+    {
+      "check": "Headless Synvim startup and exit",
+      "result": "Exited successfully in the guest.",
+      "observed_seconds": 8.944
+    },
+    {
+      "check": "Standalone warmup compile and harness execution with precompiled headers",
+      "result": "Compiled and all assertions passed. This measures compilation and execution together, not compilation alone.",
+      "observed_seconds": 147.579
+    },
+    {
+      "check": "Invalid source through Tutor with an explicit 240-second compile timeout",
+      "result": "Returned compiler diagnostics and exit code 1, distinct from a timeout.",
+      "observed_seconds": 107.939
+    },
+    {
+      "check": "Python regression checks",
+      "result": "Five checks passed."
+    }
+  ],
+  "unverified": [
+    "Complete successful browser smoke check",
+    "Interactive Synvim editing and saving",
+    "Successful test through the instrumented Tutor runner in-browser",
+    "Interactive GDB breakpoint, stepping, and inspection",
+    "Source backup export, import, and recovery after browser reload",
+    "Controlled HTTPS preview",
+    "Reliable offline asset caching",
+    "Firefox or mobile support",
+    "Complete v86 toolchain comparison"
+  ]
+}

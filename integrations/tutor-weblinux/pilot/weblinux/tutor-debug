@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+workspace=${1:-"$HOME/tutor-workspace/000a-hello-world"}
+cd "$workspace"
+g++ -g -O0 -std=c++20 -Wall -Wextra -I. \
+    /opt/tutor/problems/000a-hello-world/cpp/harness.cpp \
+    -iquote "$PWD" -o tutor-debug-bin
+exec gdb -nx -q ./tutor-debug-bin
