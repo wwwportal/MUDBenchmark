@@ -12,18 +12,11 @@ from tutor.runner import TestRunner
 
 
 class CliOnlyTests(unittest.TestCase):
-    def test_studio_commands_follow_docs_presence(self):
-        for available in (True, False):
-            with self.subTest(available=available), patch("tutor.cli._studio_available", return_value=available):
-                with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
-                    if available:
-                        with patch("tutor.cli.cmd_serve", return_value=0) as serve:
-                            self.assertEqual(main(["studio"]), 0)
-                            serve.assert_called_once()
-                    else:
-                        with self.assertRaises(SystemExit) as error:
-                            main(["studio"])
-                        self.assertEqual(error.exception.code, 2)
+    def test_studio_commands_are_gone(self):
+        for command in ("serve", "web", "studio", "export-pages"):
+            with self.subTest(command=command), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    main([command])
 
 
 class CompileTimeoutTests(unittest.TestCase):

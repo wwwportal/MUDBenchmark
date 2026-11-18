@@ -12,7 +12,6 @@ from tutor.catalog import ProblemCatalog
 from tutor.runner import TestRunner
 from tutor.scoreboard import (
     LEADERBOARD_FILE,
-    export_static_site_data,
     load_leaderboard,
     merge_scoreboard_entries,
     verify_pr_isolation,
@@ -480,121 +479,7 @@ def cmd_ci_merge_scoreboard(args):
         return 0
 
     board = merge_scoreboard_entries(entries)
-    export_static_site_data()
     print(f"{GREEN}✓ Merged {len(entries)} entry/entries into {LEADERBOARD_FILE}. Global ranked users: {len(board.get('global_rankings', []))}{RESET}")
-    return 0
-
-
-def cmd_export_pages(args):
-    cat_path, board_path = export_static_site_data()
-    print(f"{GREEN}✓ Exported GitHub Pages data:{RESET}")
-    print(f"  • Catalog     : {CYAN}{cat_path}{RESET}")
-    print(f"  • Leaderboard : {CYAN}{board_path}{RESET}")
-    return 0
-
-
-def cmd_serve(args):
-    """
-    Serves the Neovim WASM Studio + Skill-Tree DAG + Autolab Scoreboard (`docs/`) locally
-    and exposes `/api/judge` for sub-100ms local `g++ -O3 -std=c++20` execution.
-    """
-    import http.server
-    import tempfile
-
-    export_static_site_data()
-    docs_dir = REPO_ROOT / "docs"
-    port = int(getattr(args, "port", 8080))
-
-    class TutorStudioHandler(http.server.SimpleHTTPRequestHandler):
-        def __init__(self, *h_args, **h_kwargs):
-            super().__init__(*h_args, directory=str(docs_dir), **h_kwargs)
-
-        def do_POST(self):
-            if self.path == "/api/judge":
-                length = int(self.headers.get("Content-Length", "0"))
-                raw = self.rfile.read(length).decode("utf-8")
-                try:
-                    req = json.loads(raw)
-                    prob_id = req.get("problem_id", "")
-                    code = req.get("code", "")
-                    user = req.get("user") or os.environ.get("USER", "local-user")
-                    catalog = ProblemCatalog()
-                    prob = catalog.get_problem(prob_id)
-                    if not prob:
-                        self._send_json(404, {"ok": False, "log": f"Problem '{prob_id}' not found."})
-                        return
-
-                    lang = req.get("lang")
-                    if not lang:
-                        lang = "sh" if "sh" in prob.get("languages", []) else "cpp"
-                    sol_filename = "solution.sh" if lang == "sh" else "solution.hpp"
-
-                    with tempfile.TemporaryDirectory(prefix="tutor_web_") as tmp_dir:
-                        sol_path = Path(tmp_dir) / sol_filename
-                        sol_path.write_text(code, encoding="utf-8")
-                        if lang == "sh":
-                            sol_path.chmod(0o755)
-                        runner = TestRunner()
-                        success, log, runtime_ms, metrics = runner.run_test(
-                            prob, lang=lang, submission_dir=Path(tmp_dir)
-                        )
-                        is_submission = bool(req.get("is_submission", False))
-                        if success and is_submission:
-                            from tutor.state import mark_solved
-                            mark_solved(
-                                prob["id"],
-                                lang,
-                                runtime_ms=runtime_ms,
-                                cycles_per_op=metrics.get("cycles_per_op", 0.0),
-                                code_bytes=metrics.get("code_bytes", 0),
-                            )
-                            if req.get("update_board", True):
-                                merge_scoreboard_entries(
-                                    [
-                                        {
-                                            "user": user,
-                                            "problem_id": prob["id"],
-                                            "lang": lang,
-                                            "score": metrics["score"],
-                                            "scoreboard": metrics["scoreboard"],
-                                            "submitted_at": datetime.now(timezone.utc).isoformat(),
-                                        }
-                                    ]
-                                )
-                        self._send_json(
-                            200,
-                            {
-                                "ok": success,
-                                "is_submission": is_submission,
-                                "log": log,
-                                "runtime_ms": round(runtime_ms, 2),
-                                "metrics": metrics,
-                                "engine": "local-g++",
-                            },
-                        )
-                except Exception as exc:
-                    self._send_json(500, {"ok": False, "log": f"Server error: {exc}"})
-            else:
-                self.send_error(404)
-
-        def _send_json(self, status_code: int, payload: dict):
-            data = json.dumps(payload).encode("utf-8")
-            self.send_response(status_code)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Content-Length", str(len(data)))
-            self.end_headers()
-            self.wfile.write(data)
-
-    host = getattr(args, "host", "127.0.0.1")
-    print(f"\n{BOLD}{CYAN}=== SYNTRA TUTOR — NEOVIM WASM STUDIO & LOCAL JUDGE ==={RESET}")
-    print(f"  • Studio URL : {GREEN}{BOLD}http://{host}:{port}{RESET}")
-    print(f"  • Editor     : Genuine Neovim WebAssembly (:w, :Run, <Space>r, <F5>)")
-    print(f"  • Judge      : Local g++ -O3 -std=c++20 (/api/judge) + Cloud Godbolt Fallback\n")
-    with http.server.ThreadingHTTPServer((host, port), TutorStudioHandler) as httpd:
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nShutting down studio server.")
     return 0
 
 
@@ -735,10 +620,6 @@ def _positive_seconds(value):
     return seconds
 
 
-def _studio_available():
-    return (REPO_ROOT / "docs" / "index.html").is_file()
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="tutor",
@@ -789,19 +670,6 @@ def main(argv=None):
     p_board = subparsers.add_parser("scoreboard", aliases=["board"], help="Display Autolab Scoreboard rankings")
     p_board.add_argument("-p", "--problem", default=None, help="Show multi-metric scoreboard for a specific problem")
     p_board.set_defaults(func=cmd_scoreboard)
-
-    # The browser Studio lives in docs/; trees without it (such as the WebLinux
-    # pilot) are CLI-only, so the Studio commands are not offered.
-    if _studio_available():
-        # export-pages
-        p_exp = subparsers.add_parser("export-pages", help="Export catalog.json and leaderboard.json for GitHub Pages")
-        p_exp.set_defaults(func=cmd_export_pages)
-
-        # serve
-        p_srv = subparsers.add_parser("serve", aliases=["web", "studio"], help="Launch Neovim WASM Studio + Local C++20 Judge in browser")
-        p_srv.add_argument("-p", "--port", type=int, default=8080, help="HTTP port (default: 8080)")
-        p_srv.add_argument("--host", default="127.0.0.1", help="Host interface to bind to (default: 127.0.0.1 for local security)")
-        p_srv.set_defaults(func=cmd_serve)
 
     # ci-grade-pr
     p_cigrade = subparsers.add_parser("ci-grade-pr", help="CI Workflow 1: Verify PR isolation and grade submissions")

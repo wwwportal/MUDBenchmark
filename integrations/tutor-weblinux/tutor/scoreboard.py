@@ -8,7 +8,6 @@ from tutor.catalog import DEFAULT_COLSPEC, ProblemCatalog, REPO_ROOT
 
 DOCS_DATA_DIR = REPO_ROOT / "docs" / "data"
 LEADERBOARD_FILE = DOCS_DATA_DIR / "leaderboard.json"
-CATALOG_EXPORT_FILE = DOCS_DATA_DIR / "catalog.json"
 
 
 def compare_autolab_entries(
@@ -210,100 +209,3 @@ def verify_pr_isolation(changed_files: List[str], github_actor: str) -> Tuple[bo
     return True, f"All {len(changed_files)} changed file(s) strictly isolated to {allowed_prefix}"
 
 
-def export_static_site_data() -> Tuple[Path, Path]:
-    """
-    Exports static curriculum data:
-    1. Monolithic `docs/data/catalog.json` (for offline / single-bundle execution).
-    2. Lightweight `docs/data/manifest.json` (~30 KB for instant studio boot).
-    3. Partitioned `docs/data/problems/<id>.json` chunks for on-demand lazy loading.
-    4. Initializes `docs/data/leaderboard.json` if not present.
-    """
-    DOCS_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    problems_chunk_dir = DOCS_DATA_DIR / "problems"
-    problems_chunk_dir.mkdir(parents=True, exist_ok=True)
-
-    catalog = ProblemCatalog()
-    problems = catalog.list_problems()
-
-    export_list = []
-    manifest_list = []
-
-    for p in problems:
-        prob_dir = Path(p["dir"])
-        readme_path = prob_dir / "README.md"
-        readme_text = p.get("spec") or (readme_path.read_text(encoding="utf-8") if readme_path.exists() else "")
-
-        stub_text = ""
-        harness_text = ""
-        if (prob_dir / "sh" / "solution_stub.sh").exists():
-            stub_text = (prob_dir / "sh" / "solution_stub.sh").read_text(encoding="utf-8")
-            harness_path = prob_dir / "sh" / "harness.sh"
-            harness_text = harness_path.read_text(encoding="utf-8") if harness_path.exists() else ""
-        elif (prob_dir / "cpp" / "solution_stub.hpp").exists():
-            stub_text = (prob_dir / "cpp" / "solution_stub.hpp").read_text(encoding="utf-8")
-            harness_path = prob_dir / "cpp" / "harness.cpp"
-            harness_text = harness_path.read_text(encoding="utf-8") if harness_path.exists() else ""
-
-        full_entry = {
-            "id": p["id"],
-            "title": p.get("title", p["id"]),
-            "track": p.get("track", p.get("category", "Systems")),
-            "category": p.get("category", "Systems"),
-            "difficulty": p.get("difficulty", "Medium"),
-            "depends_on": p.get("depends_on", []),
-            "colspec": p.get("colspec", DEFAULT_COLSPEC),
-            "languages": p.get("languages", ["cpp"]),
-            "tags": p.get("tags", []),
-            "spec": readme_text,
-            "readme": readme_text,
-            "stub": stub_text,
-            "harness": harness_text,
-        }
-        export_list.append(full_entry)
-
-        # Write individual problem chunk for lazy-loading
-        chunk_file = problems_chunk_dir / f"{p['id']}.json"
-        with open(chunk_file, "w", encoding="utf-8") as f:
-            json.dump(full_entry, f, indent=2)
-
-        manifest_list.append(
-            {
-                "id": p["id"],
-                "title": p.get("title", p["id"]),
-                "track": p.get("track", p.get("category", "Systems")),
-                "category": p.get("category", "Systems"),
-                "difficulty": p.get("difficulty", "Medium"),
-                "depends_on": p.get("depends_on", []),
-                "colspec": p.get("colspec", DEFAULT_COLSPEC),
-                "languages": p.get("languages", ["cpp"]),
-                "tags": p.get("tags", []),
-            }
-        )
-
-    now_iso = datetime.now(timezone.utc).isoformat()
-    payload = {
-        "generated_at": now_iso,
-        "total_problems": len(export_list),
-        "problems": export_list,
-    }
-    with open(CATALOG_EXPORT_FILE, "w", encoding="utf-8") as f:
-        json.dump(payload, f, indent=2)
-
-    manifest_file = DOCS_DATA_DIR / "manifest.json"
-    with open(manifest_file, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "generated_at": now_iso,
-                "total_problems": len(manifest_list),
-                "problems": manifest_list,
-            },
-            f,
-            indent=2,
-        )
-
-    if not LEADERBOARD_FILE.exists():
-        board = load_leaderboard(LEADERBOARD_FILE)
-        with open(LEADERBOARD_FILE, "w", encoding="utf-8") as f:
-            json.dump(board, f, indent=2)
-
-    return CATALOG_EXPORT_FILE, LEADERBOARD_FILE
