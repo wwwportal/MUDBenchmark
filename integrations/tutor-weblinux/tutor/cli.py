@@ -734,6 +734,10 @@ def _positive_seconds(value):
     return seconds
 
 
+def _studio_available():
+    return (REPO_ROOT / "docs" / "index.html").is_file()
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="tutor",
@@ -782,15 +786,18 @@ def main(argv=None):
     p_board.add_argument("-p", "--problem", default=None, help="Show multi-metric scoreboard for a specific problem")
     p_board.set_defaults(func=cmd_scoreboard)
 
-    # export-pages
-    p_exp = subparsers.add_parser("export-pages", help="Export catalog.json and leaderboard.json for GitHub Pages")
-    p_exp.set_defaults(func=cmd_export_pages)
+    # The browser Studio lives in docs/; trees without it (such as the WebLinux
+    # pilot) are CLI-only, so the Studio commands are not offered.
+    if _studio_available():
+        # export-pages
+        p_exp = subparsers.add_parser("export-pages", help="Export catalog.json and leaderboard.json for GitHub Pages")
+        p_exp.set_defaults(func=cmd_export_pages)
 
-    # serve
-    p_srv = subparsers.add_parser("serve", aliases=["web", "studio"], help="Launch Neovim WASM Studio + Local C++20 Judge in browser")
-    p_srv.add_argument("-p", "--port", type=int, default=8080, help="HTTP port (default: 8080)")
-    p_srv.add_argument("--host", default="127.0.0.1", help="Host interface to bind to (default: 127.0.0.1 for local security)")
-    p_srv.set_defaults(func=cmd_serve)
+        # serve
+        p_srv = subparsers.add_parser("serve", aliases=["web", "studio"], help="Launch Neovim WASM Studio + Local C++20 Judge in browser")
+        p_srv.add_argument("-p", "--port", type=int, default=8080, help="HTTP port (default: 8080)")
+        p_srv.add_argument("--host", default="127.0.0.1", help="Host interface to bind to (default: 127.0.0.1 for local security)")
+        p_srv.set_defaults(func=cmd_serve)
 
     # ci-grade-pr
     p_cigrade = subparsers.add_parser("ci-grade-pr", help="CI Workflow 1: Verify PR isolation and grade submissions")
