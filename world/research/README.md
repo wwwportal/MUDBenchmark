@@ -36,8 +36,18 @@ proposals against current state, preserve ordered shared-supply accounting,
 and connect its runtime decisions to the proved model before this can affect
 gameplay. Lean verification is offline; it is not run for each tick.
 
-Run the example checks from the repository root with:
+The experimental transfer lookup is generated from `decideTransfer` by Lean
+offline. The model proves that balances of at least two produce the same
+transfer verdict as a balance of two, so the table covers every nonnegative
+balance for these two routes. The lookup rejects malformed inputs. It is not
+wired into the live world or the Prism admission app, and does not implement
+batch settlement or gate effects.
+
+Generate or check the table, and run the example checks, from the repository
+root with:
 
 ```sh
-node --test world/research/mana-gate-plan.test.mjs
+node tools/mana-gate-vectors.mjs
+node tools/mana-gate-vectors.mjs --check
+node --test world/research/mana-gate-{plan,verdict}.test.mjs
 ```

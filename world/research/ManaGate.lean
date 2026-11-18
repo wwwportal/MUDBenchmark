@@ -50,6 +50,14 @@ theorem insufficientMana_iff (net : Network) (mana : Nat) (route : Route) :
       available net route = true ∧ mana < cost route := by
   cases h : available net route <;> simp [decideTransfer, h, ← Nat.not_le]
 
+theorem verdict_saturates (net : Network) (mana : Nat) (route : Route)
+    (enough : 2 ≤ mana) :
+    decideTransfer net mana route = decideTransfer net 2 route := by
+  cases route <;> cases net with
+  | mk directOpen bypassOpen =>
+    cases directOpen <;> cases bypassOpen <;>
+      simp [decideTransfer, available, cost] <;> omega
+
 structure TickResult where
   remaining : Nat
   spent : Nat
@@ -166,3 +174,25 @@ example : (settle intact 1 [.direct, .direct]).verdicts =
     [.delivered, .insufficientMana] := by decide
 
 end ManaGate
+
+private def verdictName : ManaGate.Verdict → String
+  | .delivered => "delivered"
+  | .routeClosed => "routeClosed"
+  | .insufficientMana => "insufficientMana"
+
+def main : IO Unit := do
+  let mut entries : Array Lean.Json := #[]
+  for directOpen in [false, true] do
+    for bypassOpen in [false, true] do
+      for (routeName, route) in [("direct", ManaGate.Route.direct), ("bypass", .bypass)] do
+        for mana in [0, 1, 2] do
+          let net : ManaGate.Network := ⟨directOpen, bypassOpen⟩
+          entries := entries.push <| Lean.Json.mkObj [
+            ("directOpen", Lean.toJson directOpen),
+            ("bypassOpen", Lean.toJson bypassOpen),
+            ("route", Lean.toJson routeName),
+            ("mana", Lean.toJson mana),
+            ("verdict", Lean.toJson (verdictName (ManaGate.decideTransfer net mana route)))]
+  IO.println <| (Lean.Json.mkObj [
+    ("schema", Lean.toJson ("mudbenchmark/mana-gate-verdicts/1" : String)),
+    ("entries", Lean.Json.arr entries)]).compress

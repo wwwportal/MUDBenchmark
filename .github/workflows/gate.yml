@@ -37,6 +37,8 @@ jobs:
           node-version: '22'
       - name: Gate
         run: node tools/gate.mjs
+      - name: Check experimental mana-gate code
+        run: node --test world/research/mana-gate-{plan,verdict}.test.mjs
       - name: Next improvement
         if: always()
         run: node tools/tick.mjs
@@ -61,6 +63,11 @@ jobs:
       - name: Verify the model in the pinned SDK
         run: |
           docker run --rm -v "$PWD:/w" -w /w/world "$SDK" prismpm --project . verify
+
+      - name: Verify experimental mana-gate vectors
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w/world "$SDK" lean --run research/ManaGate.lean \
+            | node tools/mana-gate-vectors.mjs --stdin --check
 
       - name: Build the holo
         run: |

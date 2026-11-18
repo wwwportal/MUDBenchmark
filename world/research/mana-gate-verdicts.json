@@ -1,0 +1,173 @@
+{
+  "entries": [
+    {
+      "bypassOpen": false,
+      "directOpen": false,
+      "mana": 0,
+      "route": "direct",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": false,
+      "mana": 1,
+      "route": "direct",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": false,
+      "mana": 2,
+      "route": "direct",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": false,
+      "mana": 0,
+      "route": "bypass",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": false,
+      "mana": 1,
+      "route": "bypass",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": false,
+      "mana": 2,
+      "route": "bypass",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": false,
+      "mana": 0,
+      "route": "direct",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": false,
+      "mana": 1,
+      "route": "direct",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": false,
+      "mana": 2,
+      "route": "direct",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": false,
+      "mana": 0,
+      "route": "bypass",
+      "verdict": "insufficientMana"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": false,
+      "mana": 1,
+      "route": "bypass",
+      "verdict": "insufficientMana"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": false,
+      "mana": 2,
+      "route": "bypass",
+      "verdict": "delivered"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": true,
+      "mana": 0,
+      "route": "direct",
+      "verdict": "insufficientMana"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": true,
+      "mana": 1,
+      "route": "direct",
+      "verdict": "delivered"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": true,
+      "mana": 2,
+      "route": "direct",
+      "verdict": "delivered"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": true,
+      "mana": 0,
+      "route": "bypass",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": true,
+      "mana": 1,
+      "route": "bypass",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": false,
+      "directOpen": true,
+      "mana": 2,
+      "route": "bypass",
+      "verdict": "routeClosed"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": true,
+      "mana": 0,
+      "route": "direct",
+      "verdict": "insufficientMana"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": true,
+      "mana": 1,
+      "route": "direct",
+      "verdict": "delivered"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": true,
+      "mana": 2,
+      "route": "direct",
+      "verdict": "delivered"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": true,
+      "mana": 0,
+      "route": "bypass",
+      "verdict": "insufficientMana"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": true,
+      "mana": 1,
+      "route": "bypass",
+      "verdict": "insufficientMana"
+    },
+    {
+      "bypassOpen": true,
+      "directOpen": true,
+      "mana": 2,
+      "route": "bypass",
+      "verdict": "delivered"
+    }
+  ],
+  "schema": "mudbenchmark/mana-gate-verdicts/1"
+}
