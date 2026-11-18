@@ -9,6 +9,7 @@ from pathlib import Path
 
 from tutor import __version__
 from tutor.catalog import ProblemCatalog
+from tutor.ledger import digest_files
 from tutor.runner import TestRunner
 from tutor.scoreboard import (
     LEADERBOARD_FILE,
@@ -286,6 +287,8 @@ def cmd_submit(args):
                     "score": metrics["score"],
                     "scoreboard": metrics["scoreboard"],
                     "submitted_at": datetime.now(timezone.utc).isoformat(),
+                    "problem_hash": problem_digest(problem),
+                    "solution_sha256": digest_files([sol_src]),
                 }
             ]
         )
@@ -296,6 +299,12 @@ def cmd_submit(args):
     print(f"  • Scoreboard : Score={vec[0]:.1f}, Cycles/Op={vec[1]:.2f}, Bytes={vec[2]} B")
     print(f"  • Next Step  : {DIM}git add submissions/{user}/{problem['id']} && git commit -m 'solve {problem['id']}' && git push{RESET}\n")
     return 0
+
+
+def problem_digest(problem):
+    """Binds a claim to the exact problem and locked harness it was graded against."""
+    root = Path(problem["dir"])
+    return digest_files((p for p in root.rglob("*") if p.is_file()), root=root)
 
 
 def cmd_scoreboard(args):
@@ -418,6 +427,11 @@ def cmd_ci_grade_pr(args):
                     "scoreboard": metrics["scoreboard"],
                     "submitted_at": datetime.now(timezone.utc).isoformat(),
                     "commit_sha": args.commit_sha or "pr",
+                    "problem_hash": problem_digest(prob),
+                    "solution_sha256": digest_files(
+                        p for p in Path(sub_dir).iterdir() if p.name.startswith("solution")
+                    ),
+                    "verifier": "ci",
                 }
             )
 

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from tutor.catalog import DEFAULT_COLSPEC, ProblemCatalog, REPO_ROOT
+from tutor.ledger import append_completions, read_events
 
 DOCS_DATA_DIR = REPO_ROOT / "docs" / "data"
 LEADERBOARD_FILE = DOCS_DATA_DIR / "leaderboard.json"
@@ -142,44 +143,76 @@ def recompute_global_rankings(problems_board: Dict[str, List[Dict[str, Any]]]) -
     return ranked
 
 
+def fold_events(
+    events: List[Dict[str, Any]],
+    colspecs: Optional[Dict[str, List[Dict[str, Any]]]] = None,
+) -> Dict[str, Any]:
+    """Pure fold of completion events into the leaderboard view (no clock, no I/O)."""
+    colspecs = colspecs or {}
+    by_problem: Dict[str, List[Dict[str, Any]]] = {}
+    for event in events:
+        if event.get("type") != "completion" or float(event.get("score", 0.0)) <= 0.0:
+            continue
+        by_problem.setdefault(event["problem_id"], []).append(
+            {
+                "user": event["identity"],
+                "problem_id": event["problem_id"],
+                "lang": event.get("lang", "cpp"),
+                "score": float(event["score"]),
+                "scoreboard": event["scoreboard"],
+                "submitted_at": event["submitted_at"],
+                "commit_sha": event.get("commit_sha", "local"),
+            }
+        )
+    problems_board = {
+        prob_id: reduce_problem_scoreboard(rows, colspec=colspecs.get(prob_id, DEFAULT_COLSPEC))
+        for prob_id, rows in by_problem.items()
+    }
+    return {
+        "updated_at": max((e["submitted_at"] for e in events), default="1970-01-01T00:00:00+00:00"),
+        "events": len(events),
+        "last_event": events[-1]["hash"] if events else None,
+        "problems": problems_board,
+        "global_rankings": recompute_global_rankings(problems_board),
+    }
+
+
+def _legacy_entries(board: Dict[str, Any]) -> List[Dict[str, Any]]:
+    return [
+        {**row, "verifier": "legacy"}
+        for rows in board.get("problems", {}).values()
+        for row in sorted(rows, key=lambda r: r.get("submitted_at", ""))
+    ]
+
+
 def merge_scoreboard_entries(
     new_entries: List[Dict[str, Any]],
     leaderboard_path: Path = LEADERBOARD_FILE,
+    ledger_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
-    Merges one or more verified `scoreboard_entry` records into `leaderboard.json`,
-    re-running Autolab's `colspec` reduction per problem and updating global standings.
+    Records verified entries in the append-only completion ledger and rebuilds
+    `leaderboard.json` by replaying it. A repeated claim is ignored.
     """
+    ledger_path = Path(ledger_path) if ledger_path else Path(leaderboard_path).with_name("completions.jsonl")
     catalog = ProblemCatalog()
-    prob_map = {p["id"]: p for p in catalog.list_problems()}
+    colspecs = {p["id"]: p.get("colspec", DEFAULT_COLSPEC) for p in catalog.list_problems()}
 
-    board = load_leaderboard(leaderboard_path)
-    problems_board: Dict[str, List[Dict[str, Any]]] = board.get("problems", {})
+    if not ledger_path.exists() and Path(leaderboard_path).exists():
+        append_completions(_legacy_entries(load_leaderboard(leaderboard_path)), ledger_path)
 
-    for entry in new_entries:
-        prob_id = entry.get("problem_id")
-        if not prob_id or entry.get("scoreboard") is None or float(entry.get("score", 0.0)) <= 0.0:
-            continue
-        colspec = prob_map.get(prob_id, {}).get("colspec", DEFAULT_COLSPEC)
-        existing = problems_board.get(prob_id, [])
-        existing.append(
-            {
-                "user": entry["user"],
-                "problem_id": prob_id,
-                "lang": entry.get("lang", "cpp"),
-                "score": float(entry["score"]),
-                "scoreboard": entry["scoreboard"],
-                "submitted_at": entry.get("submitted_at") or datetime.now(timezone.utc).isoformat(),
-                "commit_sha": entry.get("commit_sha", "local"),
-            }
-        )
-        problems_board[prob_id] = reduce_problem_scoreboard(existing, colspec=colspec)
+    now = datetime.now(timezone.utc).isoformat()
+    append_completions(
+        [
+            {**entry, "submitted_at": entry.get("submitted_at") or now}
+            for entry in new_entries
+            if entry.get("problem_id") and entry.get("scoreboard") is not None and float(entry.get("score", 0.0)) > 0.0
+        ],
+        ledger_path,
+    )
 
-    board["updated_at"] = datetime.now(timezone.utc).isoformat()
-    board["problems"] = problems_board
-    board["global_rankings"] = recompute_global_rankings(problems_board)
-
-    leaderboard_path.parent.mkdir(parents=True, exist_ok=True)
+    board = fold_events(read_events(ledger_path), colspecs)
+    Path(leaderboard_path).parent.mkdir(parents=True, exist_ok=True)
     with open(leaderboard_path, "w", encoding="utf-8") as f:
         json.dump(board, f, indent=2)
 
