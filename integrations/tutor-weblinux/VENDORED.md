@@ -1,6 +1,6 @@
 Vendored from Syntra-Tutor/tutor
 base:   4224b2e935ac23c8c1986242a84df13e8f4529a2
-branch: test-weblinux-pilot at 7ae2a45fa0a8e45f1e706424d8b6f4d816336a56, including the WebLinux pilot, optional remote bridge, CLI-only changes, completion ledger, and local benchmark
+branch: test-weblinux-pilot at e67f0b754f3c2d33cdcddb8e9337198745732499, including the WebLinux pilot, optional remote bridge, CLI-only changes, completion ledger, and local benchmark
 Subset: tutor/, tutor.py, problems/000a-hello-world, pilot/weblinux (Docker build context root)
 Status: experimental; complete local smoke test does not pass yet (see R4-Laboratories/MUDBenchmark#4)
 

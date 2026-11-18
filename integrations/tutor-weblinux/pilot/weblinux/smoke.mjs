@@ -134,9 +134,16 @@ try {
     await shell("printf '%s\\n' 'invalid C++' > solution.hpp && tutor test 000a --remote bridge --compile-timeout 90", 150_000, 1);
     assert.match(await screen(), /Compilation Error:/);
   } else if (process.env.BENCHMARK) {
+    const cases = process.env.BENCH_CASES ?? "O3 O0 O3";
+    const timeout = Number(process.env.BENCH_TIMEOUT ?? "240");
+    assert.match(cases, /^(O0|O3)( (O0|O3)){0,9}$/);
+    assert.ok(Number.isInteger(timeout) && timeout > 0 && timeout <= 3600);
     const script = gzipSync(await readFile(new URL("./benchmark.py", import.meta.url))).toString("base64");
     await shell(`printf '%s' '${script}' | base64 -d | gzip -d > /tmp/tutor-benchmark.py`);
-    console.log(await shell("PYTHONPATH=/opt/tutor python3 /tmp/tutor-benchmark.py", 800_000));
+    console.log(await shell(
+      `PYTHONPATH=/opt/tutor python3 /tmp/tutor-benchmark.py --timeout ${timeout} --cases ${cases}`,
+      (60 + cases.split(" ").length * (timeout + 30)) * 1000,
+    ));
   } else if (process.env.PROFILE) {
     const script = await readFile("/tmp/prof.sh");
     await shell(`printf '%s' '${script.toString("base64")}' | base64 -d > /tmp/prof.sh`);

@@ -40,11 +40,14 @@ class BenchmarkTests(unittest.TestCase):
                 return 1
 
         with patch("benchmark.main", side_effect=fake_cli), \
-             patch("benchmark.subprocess.run", side_effect=subprocess.TimeoutExpired("g++", 1)):
+             patch("benchmark.subprocess.run", side_effect=subprocess.TimeoutExpired(
+                 "g++", 1, stderr=b"! /opt/tutor/pilot/prelude.hpp.gch/release\n"
+             )):
             result = benchmark.run_case("O3", 1)
 
         self.assertFalse(result["passed"])
         self.assertTrue(result["compiler"]["timeout"])
+        self.assertEqual(result["compiler"]["pch_used"], ["/opt/tutor/pilot/prelude.hpp.gch/release"])
         self.assertIn("Compiler timed out", result["output"])
 
 

@@ -24,6 +24,20 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def compiler_diagnostics(stderr):
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode("utf-8", errors="replace")
+    stderr = stderr or ""
+    return {
+        "pch_used": re.findall(r"^! (.+\.gch/\S+)", stderr, re.MULTILINE),
+        "pch_rejected": re.findall(r"^x (.+\.gch/\S+)", stderr, re.MULTILINE),
+        "phases": [
+            line.strip() for line in stderr.splitlines()
+            if re.match(r"\s*(phase\b.*|TOTAL)\s*:", line)
+        ],
+    }
+
+
 def run_case(optimization, timeout):
     original_run = subprocess.run
     compiler = {}
@@ -37,19 +51,14 @@ def run_case(optimization, timeout):
         started = time.monotonic()
         try:
             result = original_run(command, *args, **kwargs)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as exc:
             compiler.update(seconds=round(time.monotonic() - started, 3), timeout=True)
+            compiler.update(compiler_diagnostics(exc.stderr))
             raise
-        stderr = result.stderr or ""
         compiler.update(
             seconds=round(time.monotonic() - started, 3),
             status=result.returncode,
-            pch_used=re.findall(r"^! (.+\.gch/\S+)", stderr, re.MULTILINE),
-            pch_rejected=re.findall(r"^x (.+\.gch/\S+)", stderr, re.MULTILINE),
-            phases=[
-                line.strip() for line in stderr.splitlines()
-                if re.match(r"\s*(phase\b.*|TOTAL)\s*:", line)
-            ],
+            **compiler_diagnostics(result.stderr),
         )
         return result
 
@@ -87,21 +96,32 @@ def main_benchmark():
     harness = Path("/opt/tutor/problems/000a-hello-world/cpp/harness.cpp")
     if not solution.is_file() or not harness.is_file():
         parser.error("prepare the pilot warmup solution and run inside the pilot image")
-    emit({
-        "compiler_version": subprocess.run(
-            ["g++", "--version"], capture_output=True, text=True, check=True
-        ).stdout.splitlines()[0],
-        "harness_sha256": digest(harness),
-        "solution_sha256": digest(solution),
-        "cases": args.cases,
-        "compile_timeout_seconds": args.timeout,
-        "instrumentation": "-H -Winvalid-pch -ftime-report",
-    })
+    version = subprocess.run(
+        ["g++", "--version"], capture_output=True, text=True, check=True
+    ).stdout.splitlines()[0]
+    emit({"compiler": version})
+    emit({"harness_sha256": digest(harness)})
+    emit({"solution_sha256": digest(solution)})
+    emit({"cases": args.cases, "timeout": args.timeout})
+    emit({"flags": "-H -Winvalid-pch -ftime-report"})
     results = []
-    for optimization in args.cases:
+    for index, optimization in enumerate(args.cases, 1):
+        emit({"case": index, "opt": optimization, "state": "starting"})
         result = run_case(optimization, args.timeout)
         results.append(result)
-        emit(result)
+        compiler = result["compiler"]
+        emit({"case": index, "opt": optimization, "seconds": result["seconds"],
+              "status": result["status"], "passed": result["passed"]})
+        emit({"case": index, "compiler_seconds": compiler.get("seconds"),
+              "timeout": compiler.get("timeout", False)})
+        for key in ("pch_used", "pch_rejected"):
+            emit({"case": index, key: [Path(path).name for path in compiler.get(key, [])]})
+        for phase in compiler.get("phases", []):
+            emit({"case": index, "phase": phase[:65]})
+        if not result["passed"]:
+            output = re.sub(r"\x1b\[[0-9;]*m", "", result["output"])
+            for line in output.splitlines()[-4:]:
+                emit({"case": index, "output": line[:60]})
     return 0 if all(result["passed"] for result in results) else 1
 
 

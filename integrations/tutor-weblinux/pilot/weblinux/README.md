@@ -128,6 +128,8 @@ successive `-O3`, experimental `-O0`, and `-O3` runs. The latter runs are warm
 relative to the first, but no cache state is controlled. The benchmark adds GCC
 diagnostic flags and does not change Tutor's production optimization settings.
 Each compilation has a 240-second timeout; any failure fails the benchmark.
+Use, for example, `BENCH_CASES=O3 BENCH_TIMEOUT=120` for one shorter run.
+Partial PCH diagnostics are retained when a compiler times out.
 
 Local observations are recorded in `evidence.json`. They were made in a shared
 execution environment, not a controlled performance lab, and do not establish
