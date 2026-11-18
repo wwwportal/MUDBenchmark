@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -130,6 +131,16 @@ def cmd_dag(args):
     return 0
 
 
+def synvim_installed():
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+    return (config_home / "nvim" / "lua" / "synvim").is_dir()
+
+
+def resolve_editor():
+    """Synvim (nvim) by default; deliberately ignores $EDITOR so problems open in one controlled editor."""
+    return os.environ.get("TUTOR_EDITOR") or get_config().get("editor") or "nvim"
+
+
 def cmd_pick(args):
     catalog = ProblemCatalog()
     problem = catalog.get_problem(args.problem_id)
@@ -159,9 +170,11 @@ def cmd_pick(args):
     print(f"  • Solution : {BOLD}{GREEN}{solution_path}{RESET}\n")
 
     if not args.no_edit:
-        editor = os.environ.get("EDITOR", "nvim")
+        editor = resolve_editor()
+        if editor == "nvim" and not synvim_installed():
+            print(f"{YELLOW}⚠ Synvim is not installed; opening plain nvim. Install it with synvim/setup.sh.{RESET}")
         print(f"{DIM}Opening {editor} {solution_path}...{RESET}\n")
-        os.system(f"{editor} '{solution_path}'")
+        subprocess.call([*shlex.split(editor), str(solution_path)])
 
     return 0
 
@@ -656,7 +669,7 @@ def main(argv=None):
     p_pick = subparsers.add_parser("pick", help="Scaffold and open a problem solution in editor")
     p_pick.add_argument("problem_id", help="Problem ID (e.g. 002, 2, or 002-hypervector-hamming)")
     p_pick.add_argument("--lang", default=None, help="Implementation language (cpp, rust, python)")
-    p_pick.add_argument("--no-edit", action="store_true", help="Do not launch editor automatically")
+    p_pick.add_argument("--no-edit", action="store_true", help="Do not open Synvim automatically")
     p_pick.add_argument("--force", action="store_true", help="Bypass prerequisite lock check")
     p_pick.set_defaults(func=cmd_pick)
 

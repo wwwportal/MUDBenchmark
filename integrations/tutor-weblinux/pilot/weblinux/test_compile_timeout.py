@@ -52,6 +52,24 @@ class CompileTimeoutTests(unittest.TestCase):
             self.assertEqual(compiler.call_args.kwargs["timeout"], 7)
 
 
+class PickEditorTests(unittest.TestCase):
+    def test_pick_opens_synvim_and_ignores_editor_variable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            solution = Path(tmp) / "solution.hpp"
+            problem = {"id": "warmup", "title": "Warm up", "languages": ["cpp"]}
+            with patch.dict("os.environ", {"EDITOR": "emacs"}, clear=False), \
+                 patch("tutor.cli.ProblemCatalog") as catalog, \
+                 patch("tutor.cli.get_config", return_value={"default_lang": "cpp"}), \
+                 patch("tutor.cli.WorkspaceManager") as workspace, \
+                 patch("tutor.cli.synvim_installed", return_value=True), \
+                 patch("tutor.cli.subprocess.call") as call, \
+                 contextlib.redirect_stdout(io.StringIO()):
+                catalog.return_value.get_problem.return_value = problem
+                workspace.return_value.scaffold.return_value = (solution, Path(tmp) / "spec.txt")
+                self.assertEqual(main(["pick", "warmup"]), 0)
+        call.assert_called_once_with(["nvim", str(solution)])
+
+
 class RemoteTests(unittest.TestCase):
     def test_bundle_inlines_only_allowed_includes(self):
         with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as outside:
