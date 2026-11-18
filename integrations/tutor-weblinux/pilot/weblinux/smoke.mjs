@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
+import { gzipSync } from "node:zlib";
 
 const profile = await mkdtemp("/tmp/tutor-weblinux-smoke-");
 const chrome = spawn(process.env.CHROME ?? "/opt/google/chrome/chrome", [
@@ -132,6 +133,10 @@ try {
     assert.match(await screen(), /ALL TESTS PASSED/);
     await shell("printf '%s\\n' 'invalid C++' > solution.hpp && tutor test 000a --remote bridge --compile-timeout 90", 150_000, 1);
     assert.match(await screen(), /Compilation Error:/);
+  } else if (process.env.BENCHMARK) {
+    const script = gzipSync(await readFile(new URL("./benchmark.py", import.meta.url))).toString("base64");
+    await shell(`printf '%s' '${script}' | base64 -d | gzip -d > /tmp/tutor-benchmark.py`);
+    console.log(await shell("PYTHONPATH=/opt/tutor python3 /tmp/tutor-benchmark.py", 800_000));
   } else if (process.env.PROFILE) {
     const script = await readFile("/tmp/prof.sh");
     await shell(`printf '%s' '${script.toString("base64")}' | base64 -d > /tmp/prof.sh`);

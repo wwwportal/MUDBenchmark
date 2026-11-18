@@ -1,17 +1,16 @@
 # Tutor WebLinux pilot
 
-This is a standalone, offline one-problem pilot for desktop Chromium. It does
-not replace the existing Studio. The browser runs QEMU-Wasm and all learner code
-locally. Guest networking is disabled: the pinned QEMU binary does not implement
-the upstream demo's optional `-netdev user` switch.
+This is a standalone one-problem pilot for desktop Chromium. The browser runs
+QEMU-Wasm and can run learner code locally. An optional bridge runs tests
+remotely. Guest networking is disabled: the pinned QEMU binary does not
+implement the upstream demo's optional `-netdev user` switch.
 
 ## Current validation status
 
-**Decision: do not replace the Studio with this WebLinux configuration.**
-The experiment established that execution is possible, but did not deliver the
-requested complete, usable pilot. Interactive editing, GDB, source export/import,
-and reload recovery remain unverified. Their implementations are experimental,
-not delivered features. No hosted preview exists.
+**The WebLinux pilot is not yet a complete, usable replacement.** Interactive
+editing and saving with `:wq` have been exercised, but local Tutor compile/test,
+GDB, source export/import, and reload recovery remain unverified. The bridge
+has passed and rejected example solutions remotely. No hosted preview exists.
 
 Chromium reached the Tutor shell in approximately 16 seconds and successfully
 listed and scaffolded the warmup problem. A standalone warmup build and test
@@ -30,8 +29,7 @@ as evidence that a failing test had executed. Do not rely on those earlier
 results.
 
 This is not evidence that WebLinux has acceptable learner-facing performance
-or is faster than v86. No hosted preview has been deployed. The performance
-result currently argues against replacing the Studio with this configuration.
+or is faster than v86.
 
 The guest-only Synvim configuration disables the optional `scribe` plugin:
 it was missing from the built plugin set and tried to clone itself during
@@ -101,8 +99,8 @@ Serve `build/weblinux-site` as-is on a controlled HTTPS origin. Apply
 `Cross-Origin-Embedder-Policy: require-corp`, host all assets on the same origin,
 and serve `.js` with a JavaScript MIME type. Serve the precompressed files as
 gzip file bytes (do not set `Content-Encoding: gzip` for them); the worker
-decompresses them explicitly. Do not copy the bundle into the current Studio or
-assume stock GitHub Pages supplies the headers.
+decompresses them explicitly. Do not assume stock GitHub Pages supplies the
+headers.
 
 ## Checks and limitations
 
@@ -113,9 +111,8 @@ python3 -m unittest discover -s pilot/weblinux -p 'test_*.py'
 node pilot/weblinux/smoke.mjs http://127.0.0.1:8765/
 ```
 
-The five Python checks cover inline-spec scaffolding, preservation of existing
-work, the file-spec fallback, and default/explicit/invalid compilation timeout
-handling. They pass. They do not establish that the browser workflow works.
+The Python checks cover scaffolding, compilation timeouts, editor selection,
+and remote feedback. They do not establish that the browser workflow works.
 
 The browser check requires Node with built-in WebSocket support and Chromium.
 Set `CHROME` to its executable path. It must finish successfully before claiming
@@ -123,6 +120,14 @@ the end-to-end pilot is verified. It launches an isolated temporary browser
 profile, synchronizes shell jobs by completion markers, and cleans up its own
 browser process. `COMPILER_ONLY=1` measures a standalone warmup build and run;
 `DIAGNOSTICS=1` isolates a header-free compile and headless editor startup.
+
+`BENCHMARK=1 node pilot/weblinux/smoke.mjs` measures the real local Tutor test
+path with a known warmup solution. It records compiler version and source hashes,
+whether GCC used a precompiled header, GCC phase reports, and pass/fail for
+successive `-O3`, experimental `-O0`, and `-O3` runs. The latter runs are warm
+relative to the first, but no cache state is controlled. The benchmark adds GCC
+diagnostic flags and does not change Tutor's production optimization settings.
+Each compilation has a 240-second timeout; any failure fails the benchmark.
 
 Local observations are recorded in `evidence.json`. They were made in a shared
 execution environment, not a controlled performance lab, and do not establish
