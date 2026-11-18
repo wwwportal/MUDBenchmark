@@ -151,7 +151,6 @@ function M.show_help()
     "",
     " ── Configuration ──",
     "  Colorscheme           mono.lua (black-and-white)",
-    "  LSP                   Configured via lsp.lua",
     "  Command               :Synvim help",
     "",
     "Press <Esc> or q to close this window.",

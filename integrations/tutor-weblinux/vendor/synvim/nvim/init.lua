@@ -538,9 +538,6 @@ vim.keymap.set("n", "ZZ", function() smart_quit({ write = true }) end, { desc = 
 vim.keymap.set("n", "ZQ", function() smart_quit({ force = true }) end, { desc = "Quit without saving or return to terminal" })
 
 
--- ── LSP ──
-require("lsp")
-
 -- ── Add Local Development Repos to Runtimepath ──
 for _, repo in ipairs({ "router", "taskflow", "scribe" }) do
 	local path = vim.fn.expand("~/code/" .. repo)
